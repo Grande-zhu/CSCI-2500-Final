@@ -1,7 +1,5 @@
 """
-
 This module provides the input of the program. Provides parsing of mips code.
-
 """
 
 import re
@@ -12,7 +10,7 @@ single_instruction = re.compile(r"^\s*([a-z]+)\s*$")
 re_label = re.compile(r"^\s*([A-Za-z]\w+)\s*:(.*)")
 re_standard = re.compile(r"\s*([a-z]+)\s*\$([a-z]\d)\s*,\s*\$([a-z]\d|zero)\s*,\s*\$?([a-z]\d|-?\d+|zero)")
 re_load_save = re.compile(r"\s*([a-z]+)\s*\$([a-z]\d)\s*,\s*(-?\d+)\s*\(\s*\$([a-z]\d|zero)\s*\)")
-re_branch = re.compile(r"\s*([a-z]+)\s*\$([a-z]\d|zero)\s*,\s*[|$]([a-z]\d|-?\d+|zero)\s*,\s*([A-Za-z]\w+)")
+re_branch = re.compile(r"\s*([a-z]+)\s*\$?([a-z]\d|-?\d+|zero)\s*,\s*\$?([a-z]\d|-?\d+|zero)\s*,\s*([A-Za-z]\w*)")
 re_invalid_var_num = re.compile(r"\$\d")
 
 """Commands supported by this project."""
@@ -64,6 +62,15 @@ def jump_ref(parsed_data):
     return ref_table
 
 
+def translation_dict(parsed_data):
+    """Returns a reference table of labels and their location in the list."""
+    ref_table = {}
+    for i, v in enumerate(parsed_data):
+        if v[1] is not None:
+            ref_table[i] = v[1]
+    return ref_table
+
+
 def parse_file(file_name):
     """Parse a file containing mips code."""
     result1 = []
@@ -88,7 +95,8 @@ def parse_file(file_name):
             result.append([v[0][0], v[0][1], v[0][2], str(refs[v[0][3]])])
         else:
             result.append(v[0])
-    return result
+    translation = translation_dict(result1)
+    return result, translation
 
 
 def is_var(item):
@@ -102,4 +110,21 @@ def list_labels(parsed_data):
     for i, v in enumerate(parsed_data):
         if v[0] in ("beq", "bne"):
             result.append([i, int(v[3])])
+    return result
+
+
+def item_to_string(item):
+    if is_var(item):
+        return "$" + item
+    else:
+        return item
+
+
+def instruction_to_string(instruction):
+    result = ""
+    result += instruction[0] + " " + item_to_string(instruction[1]) + "," + item_to_string(instruction[2])
+    if instruction[0] in ("lw", "sw"):
+        result += "(" + item_to_string(instruction[3]) + ")"
+    else:
+        result += "," + item_to_string(instruction[3])
     return result
